@@ -91,6 +91,11 @@ class LoadBalancer(object):
         print(f"client {sock.getpeername()} has disconnected")
         print(f"{'='*41}flow end{'='*40}")
         ss_socket = self.flow_table[sock]
+
+        srv_addr = self.flow_table[sock].getsockname()
+        if srv_addr in self.server_stats:
+            self.server_stats[srv_addr] -= 1
+            
         self.sockets.remove(sock)
         self.sockets.remove(ss_socket)
         sock.close()
@@ -101,7 +106,6 @@ class LoadBalancer(object):
             resp_time = time.time() - start
             self.response_times.append(resp_time)
         self.total_requests += 1
-        self.server_stats[(ss_socket.getpeername())] -= 1  # Decrementa contador do servidor
         del self.flow_table[sock]
         del self.flow_table[ss_socket]
 
