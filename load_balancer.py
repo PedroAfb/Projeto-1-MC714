@@ -101,6 +101,7 @@ class LoadBalancer(object):
             resp_time = time.time() - start
             self.response_times.append(resp_time)
         self.total_requests += 1
+        self.server_stats[(ss_socket.getpeername())] -= 1  # Decrementa contador do servidor
         del self.flow_table[sock]
         del self.flow_table[ss_socket]
 
@@ -109,6 +110,8 @@ class LoadBalancer(object):
             return random.choice(server_list)
         elif algorithm == 'round robin':
             return round_robin(ITER)
+        elif algorithm == 'shortest queue':
+            return min(self.server_stats.items(), key=lambda x: x[1])[0]
         else:
             raise Exception(f"unknown algorithm: {algorithm}")
 
