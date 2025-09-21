@@ -1,38 +1,68 @@
-# MC714 - Heurísticas (Esqueleto)
+## Documentação e Relatório - Balanceador de Carga
 
-Este repositório contém um esqueleto simples em Python para implementar heurísticas
-(metaheurísticas ou construtivas) para o Trabalho 1.
+### 1. Instruções de Execução
 
-## Estrutura
-```
-python/
-  problem.py          # Modelo de definição do problema
-  solution.py         # Representação imutável de solução
-  heuristics/
-    base.py           # Classe base para heurísticas
-    random_choice.py  # Heurística de escolha aleatória
-  main.py             # CLI para executar
-  tests/
-    test_random.py    # Teste básico
-  pyproject.toml
-```
+**Pré-requisitos:**  
+- Python 3.x instalado  
 
-## Executar
-Instale dependências de desenvolvimento (pytest opcional):
-```
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
-```
+**Passos para executar:**
 
-Execute a heurística (arquivo de entrada fictício):
-```
-python -m python.main data/exemplo.txt --iters 500 --seed 123
-```
-Ajuste `build_problem_from_file` em `main.py` para interpretar o formato real.
+1. **Inicie os servidores** (em três terminais separados):
+   ```bash
+   python server0.py
+   python server1.py
+   python server2.py
+   ```
 
-## Próximos Passos
-- Implementar avaliação real em `Problem.evaluate`.
-- Definir geração de vizinhança específica.
-- Adicionar limite de tempo e métricas.
-- Incluir logging estruturado.
+2. **Inicie o balanceador de carga** (escolha a política: `random`, `round robin`, `shortest queue`):
+   ```bash
+   python load_balancer.py "random"
+   # ou
+   python load_balancer.py "round robin"
+   # ou
+   python load_balancer.py "shortest queue"
+   ```
+
+3. **Execute o cliente** (fluxo normal ou rajada):
+   ```bash
+   python client.py
+   python burst_client.py
+   ```
+
+---
+
+### 2. Estrutura do Código
+
+- `server0.py`, `server1.py`, `server2.py`: Simulam servidores, cada um com fila de requisições e atraso variável conforme o tipo de pedido.
+- `load_balancer.py`: Implementa o balanceador de carga, alternando entre três políticas e registrando métricas globais.
+- `client.py`: Simula tráfego normal, com intervalos aleatórios entre requisições.
+- `burst_client.py`: Simula rajadas de requisições para testar o sistema sob carga intensa.
+
+---
+
+### 3. Escolhas de Projeto
+
+- **Sockets TCP:** Utilizados para comunicação entre cliente, balanceador e servidores, simulando um ambiente realista.
+- **Fila de requisições:** Cada servidor mantém uma lista para simular processamento sequencial.
+- **Logs:** Todas as estruturas: cliente, servidor e balanceador de carga possuem logs que permitem entender o que está acontecendo em tempo real 
+- **Atraso variável:** O tempo de processamento depende do tipo de requisição, tornando o teste mais próximo do real.
+- **Métricas globais:** O balanceador registra tempo médio de resposta, throughput e distribuição de carga por servidor.
+- **Políticas configuráveis:** O usuário pode alternar facilmente entre as políticas via argumento de linha de comando.
+
+---
+
+### 4. Como Testar o Balanceador
+
+- Execute os servidores e o balanceador conforme instruções acima.
+- Use `client.py` para tráfego constante e `burst_client.py` para rajadas.
+- Observe os logs do balanceador para ver as métricas e distribuição de carga.
+- Troque a política do balanceador e compare os resultados.
+
+---
+
+### 5. Análise dos Resultados
+
+- **Random:** Distribui as requisições de forma uniforme, mas pode sobrecarregar servidores em rajadas.
+- **Round Robin:** Garante distribuição sequencial, útil para cargas constantes.
+- **Shortest Queue:** Equilibra melhor em cenários de rajada, evitando filas longas em um único servidor.
+- **Métricas:** O tempo médio de resposta e a vazão variam conforme a política e o padrão de tráfego. Em rajadas, a política de fila mais curta tende a apresentar melhor desempenho.
