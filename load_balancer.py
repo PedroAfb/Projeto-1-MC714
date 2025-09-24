@@ -92,20 +92,35 @@ class LoadBalancer(object):
         print(f"{'='*41}flow end{'='*40}")
         ss_socket = self.flow_table[sock]
 
-        srv_addr = self.flow_table[sock].getsockname()
-        if srv_addr in self.server_stats:
-            self.server_stats[srv_addr] -= 1
+        # Identifica qual é o cliente e qual é o servidor
+        if sock in self.conn_start_times:
+            # sock é o cliente
+            client_socket = sock
+            server_socket = ss_socket
+        else:
+            # sock é o servidor, o cliente está na tabela
+            client_socket = ss_socket
+            server_socket = sock
+
+        # Decrementa contador do servidor usando a chave correta do SERVER_POOL
+        server_addr = server_socket.getpeername()
+        for srv_key in self.server_stats:
+            if srv_key[0] == server_addr[0] and srv_key[1] == server_addr[1]:
+                self.server_stats[srv_key] -= 1
+                break
             
         self.sockets.remove(sock)
         self.sockets.remove(ss_socket)
         sock.close()
         ss_socket.close()
+        
         # Métrica global: tempo de resposta por requisição
-        start = self.conn_start_times.pop(sock, None)
+        start = self.conn_start_times.pop(client_socket, None)
         if start:
             resp_time = time.time() - start
             self.response_times.append(resp_time)
-        self.total_requests += 1
+            self.total_requests += 1
+        
         del self.flow_table[sock]
         del self.flow_table[ss_socket]
 
@@ -124,7 +139,7 @@ class LoadBalancer(object):
         throughput = self.total_requests / elapsed if elapsed > 0 else 0
         avg_response = sum(self.response_times) / len(self.response_times) if self.response_times else 0
         print(f"\n=== MÉTRICAS ===")
-        print(f"Total de requisições: {self.total_requests}")
+        print(f"Total de requisições processadas: {self.total_requests}")
         print(f"Vazão (throughput): {throughput:.2f} req/s")
         print(f"Tempo médio de resposta: {avg_response:.4f} s")
         print("Distribuição de carga por servidor:")
@@ -137,4 +152,5 @@ if __name__ == '__main__':
     alg = 'random'
     if len(sys.argv) > 1:
         alg = sys.argv[1]
-    LoadBalancer('localhost', 5555, "round robin").start()
+    print(f"Starting load_balancer with '{alg}' algorithm")
+    LoadBalancer('localhost', 5555, alg).start()
